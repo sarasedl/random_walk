@@ -68,7 +68,16 @@ int main(){
           int curr_y = j + riadky_hranica_dole;
           int k = 0;
           
-          while ((curr_x + stlpce_hranica_lava != 0 || curr_y + riadky_hranica_dole != 0) && k < cfg.max_krokov){
+          while ((curr_x != 0 || curr_y != 0) && k < cfg.max_krokov){
+
+		/*if (read(fd_in, &prijata_sprava, sizeof(ConfigMessage)) > 0){
+			status.mod = prijata_sprava.mod;
+			status.koniec = prijata_sprava.ukoncit_sever;
+		}*/
+		if (status.koniec){
+			break;
+		}
+
             double random = (double)rand() / RAND_MAX;
 
             if (random < cfg.p_hore) curr_y ++;
@@ -94,9 +103,10 @@ int main(){
             status.chodec_x = curr_x - stlpce_hranica_lava;
             status.chodec_y = curr_y - riadky_hranica_dole;
             status.krok = k;
+	    write(fd_out, &status, sizeof(StatusMessage));
           }
           suma_krokov[i][j] += k;
-          if (curr_x == stred_x && curr_y == stred_y){
+          if (curr_x == 0 && curr_y == 0){
             pocet_uspechov[i][j]++;
           }
           //aj tu sa mozno bude odosielat sprava

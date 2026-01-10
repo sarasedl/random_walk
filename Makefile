@@ -8,6 +8,8 @@ SERVER_SRC = server/server.c
 CLIENT_BIN = client/client
 SERVER_BIN = server/server
 
+.PHONY: all cllient server clean
+
 all: $(CLIENT_BIN) $(SERVER_BIN)
 	
 client: $(CLIENT_BIN)
