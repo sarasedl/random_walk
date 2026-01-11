@@ -47,8 +47,6 @@ typedef struct {
 typedef struct{
   int fd_write;
   int fd_read;
-  int riadky;
-  int stlpce;
   int koniec_simulacie;
   ConfigMessage *cfg;
   pthread_mutex_t *mutex;
