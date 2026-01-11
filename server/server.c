@@ -2,9 +2,8 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <pthread.h>
-#include <errno.h>
 #include "server.h"
-#include "../common/common.h"
+#include "server.h"
 
 Svet *nacitaj_svet(const char *nazov_suboru, int sirka, int vyska) {
     FILE *f = fopen(nazov_suboru, "r");

@@ -3,10 +3,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <termios.h>
-#include "client.h"
 #include <sys/wait.h>
-#include "../common/common.h"
 #include <poll.h>
+#include "client.h"
 
 
 void uloz_do_suboru(ThreadData *data, double **priemery, double **pravdepodobnosti){
