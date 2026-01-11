@@ -244,15 +244,12 @@ void spusti_simulaciu(ConfigMessage cfg) {
         return;
     }
 
-    if (pid == 0) {
-        // --- PROCES SERVER ---
+    if (pid == 0){
         execl("server/server", "server", NULL);
         perror("\nChyba pri spusteni servera");
         exit(1);
     } else {
-        // --- PROCES KLIENT (RODIČ) ---
-        
-        // 1. Otvorenie rúry smerom k serveru (zápis konfigurácie)
+
         int fd_out = open(FIFO_C2S, O_WRONLY);
         if (fd_out < 0) {
             perror("Klient open C2S fail");
@@ -262,10 +259,10 @@ void spusti_simulaciu(ConfigMessage cfg) {
 	pthread_mutex_t m;
 	pthread_mutex_init(&m, NULL);
         
-        // Pošleme štruktúru serveru, aby vedel čo má robiť
+        
         write(fd_out, &cfg, sizeof(ConfigMessage));
 
-        // 2. Otvorenie rúry od servera (čítanie priebežných stavov)
+        
         int fd_in = open(FIFO_S2C, O_RDONLY);
         if (fd_in < 0) {
             perror("Klient open S2C fail");
@@ -273,7 +270,7 @@ void spusti_simulaciu(ConfigMessage cfg) {
             return;
         }
 
-        // 3. Príprava dát pre vlákno, ktoré bude prijímať výsledky
+        
         pthread_t vlakno;
         ThreadData *data = malloc(sizeof(ThreadData));
         if (data == NULL) {
@@ -286,32 +283,27 @@ void spusti_simulaciu(ConfigMessage cfg) {
         data->fd_write = fd_out;
         data->koniec_simulacie = 0;
 	data->mutex = &m;
-        data->cfg = &cfg; // Odovzdáme pointer na lokálnu kópiu konfigurácie
+        data->cfg = &cfg; 
 
-        // 4. Spustenie komunikačného vlákna
+        
         if (pthread_create(&vlakno, NULL, prijimaj_vysledky, data) != 0) {
             perror("Nepodarilo sa vytvorit vlakno");
             free(data);
         } else {
-            // TU ČAKÁME: Program tu zastane, kým simulácia neskončí
+            
             pthread_join(vlakno, NULL);
         }
 
-        // 5. Upratovanie (Simulácia skončila, vlákno dobehlo)
+        
         free(data);
         close(fd_in);
-        close(fd_out);
-        
-        // Počkáme na proces servera, aby nezostal v systéme ako zombie
-        waitpid(pid, NULL, 0); 
+        close(fd_out); 
         
         printf("\n[SYSTÉM] Simulácia úspešne dobehla. Vraciame sa do menu.\n");
     }
 }
 
 int main(){
-  mkfifo(FIFO_C2S, 0666);
-  mkfifo(FIFO_S2C, 0666);
   int volba = 0;
 
   while (volba != 4){
@@ -347,9 +339,6 @@ int main(){
 	}
     }
    
-  
-  unlink(FIFO_C2S);
-  unlink(FIFO_S2C);
   printf("[KLIENT] Aplikacia ukoncena\n");
   return 0;
 }
