@@ -13,6 +13,12 @@
 #define FIFO_C2S "vstup_server.fifo"
 #define FIFO_S2C "vyspu_klient.fifo"
 
+typedef struct {
+	int sirka;
+	int vyska;
+	int **prekazky;
+} Svet;
+
 //sprava od klienta pre vstup_server
 typedef struct {
   int riadky;

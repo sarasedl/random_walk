@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <termios.h>
 #include "client.h"
 #include <sys/wait.h>
 #include "../common/common.h"
@@ -39,10 +40,12 @@ void uloz_do_suboru(ThreadData *data, double **priemery, double **pravdepodobnos
 	fprintf(f,"Pocet vykonanych replikacii: %d",data->cfg->replikacie); 
 
 	fprintf(f, "TABULKA PRIEMERNYCH KROKOV:\n");
-	for(int y = data->cfg->riadky - 1; y >= 0; y--){
-		for (int x = 0; x <data->cfg->stlpce;x++){
+	for(int x = 0; x < data->cfg->stlpce; x++){
+		for (int y = 0; y <data->cfg->riadky; y++){
 			if (x + min_x == 0 && y + min_y ==0) {
 			fprintf(f, " [0,0] ");
+			} else if (priemery[x][y] == -1){
+			fprintf(f, "    |    ");
 			} else {
 			fprintf(f, " %8.2f ", priemery[x][y]);
 			}
@@ -51,10 +54,12 @@ void uloz_do_suboru(ThreadData *data, double **priemery, double **pravdepodobnos
 	}
 
 	fprintf(f, "\nTABULKA PRAVDEPODOBNOSTI:\n");
-	for (int y = data->cfg->riadky -1;y >= 0;y--){
-		for(int x = 0; x <data->cfg->stlpce; x++){
+	for (int x = 0; x < data->cfg->stlpce;x++){
+		for(int y = 0;  y < data->cfg->riadky; y++){
 			if (x + min_x == 0 && y + min_y == 0) {
 			fprintf(f, " [0,0] ");
+			} else if(pravdepodobnosti[x][y] == -1){
+			fprintf(f, "   |    ");
 			} else {
 			fprintf(f," %8.2f ", pravdepodobnosti[x][y]);
 			}
@@ -87,7 +92,7 @@ int nacitaj_zo_suboru_cfg(const char *cesta_k_suboru, ConfigMessage *cfg) {
 }
 void vykresli_svet(ConfigMessage *cfg, StatusMessage *status){
 	printf("Krok cislo %d Replikacia %d/%d\n", status->krok, status->aktualna_replikacia, status->replikacie);
-	for (int y = cfg->riadky - 1; y >= 0; y--){
+	for (int x = 0; x < cfg->stlpce; x++){
 		int x_stred,y_stred;
 		if (cfg->stlpce/2 * 2 == cfg->stlpce){
 			x_stred = cfg->stlpce/2-1;
@@ -101,7 +106,7 @@ void vykresli_svet(ConfigMessage *cfg, StatusMessage *status){
 			y_stred = cfg->riadky/2;
 		}
 
-		for(int x = 0; x < cfg->stlpce;x++){
+		for(int y = 0; y < cfg->riadky;y++){
 			if ((x== x_stred && y== y_stred) && (x ==status->chodec_x && y == status->chodec_y))printf(" O ");
 			else if (x == x_stred && y == y_stred) printf(" X ");
 			else if (x == status->chodec_x && y == status->chodec_y) printf(" C ");
@@ -130,9 +135,6 @@ void *prijimaj_vysledky(void *arg){
       pthread_mutex_unlock(data->mutex);
 	uloz_do_suboru(data, pole_priemerov, pole_pravdepodobnosti);
       break;
-    } else if (status.koniec_replikacie == 0){
-      pole_priemerov[status.chodec_x][status.chodec_y] = status.priemer_krokov;
-      pole_pravdepodobnosti[status.chodec_x][status.chodec_y] = status.pravdepodobnost;
     } else if (status.mod == 1 && status.koniec_replikacie == 1){
       printf("\n Tabulka priemerneho poctu krokov z pollicka do bodu 0,0");
       vypis_maticu(pole_priemerov, data->cfg->stlpce, data->cfg->riadky, status.aktualna_replikacia, status.replikacie);
@@ -143,6 +145,8 @@ void *prijimaj_vysledky(void *arg){
 	vykresli_svet((data->cfg),&status);
 	sleep(1);
     }
+    pole_priemerov[status.chodec_x][status.chodec_y] = status.priemer_krokov;
+      pole_pravdepodobnosti[status.chodec_x][status.chodec_y] = status.pravdepodobnost;
 
   }
   for (int i = 0; i < data->cfg->stlpce;i++){
@@ -176,22 +180,26 @@ void vypis_maticu(double **pole, int sirka, int vyska, int aktualna_replikacia, 
   printf("\n Replikacia %d / %d\n\n", aktualna_replikacia, replikacie);
   
   printf("      y\\x |");
-  for (int x = 0; x < sirka; x++){
+for (int x = 0; x < sirka; x++){
     printf("%7d ", x + min_x);
   }
   printf("\n----------+");
   for(int x = 0; x < sirka; x++) printf("----------");
   printf("\n");
 
-  for (int y = vyska - 1; y >= 0; y --){
-    printf("%9d |", y + min_y);
-    for (int x = 0; x <sirka; x++){
+int ysur = min_y;
+  for (int x = 0; x < sirka; x++){
+	printf("%9d |", ysur);
+    for (int y = 0; y <vyska; y++){
       if (x + min_x == 0 && y + min_y == 0) {
         printf("  [0,0] ");
+      } else if(pole[x][y] == -1) {
+	printf("    |    ");
       } else {
         printf("  %3.2f  ", pole[x][y]);
       }
     }
+    ysur ++;
     printf("\n");
   }
     printf("\n");
@@ -201,9 +209,8 @@ void vypis_maticu(double **pole, int sirka, int vyska, int aktualna_replikacia, 
 void zobraz_menu(){
   printf("\n--- NAHODNA POCHODZKA MENU ---");
   printf("\n1 Nova simulacia");
-  printf("\n2 Pripojit k simulacii");
-  printf("\n3 Opatovne spustenie simulacie");
-  printf("\n4 Koniec");
+  printf("\n2 Opatovne spustenie simulacie");
+  printf("\n3 Koniec");
   printf("\nVolba: ");
 }
 
@@ -232,9 +239,15 @@ void nacitaj_konfiguraciu(ConfigMessage *cfg){
       printf("Mod (0 - interaktivny 1 - sumarny, vypis priem. pocet posunov 2 - sumarny, vypis pravdepodobnost ze sa chodec dostane na 0,0: ");
       scanf("%d", &cfg->mod);
       cfg->ukoncit_sever = 0;
-      printf("Typ sveta (0 - bez prekazok 1 - s prekazkami): ");
+      printf("Typ sveta (0 - bez prekazok 1 - s prekazkami, ak vyberiete velkost sveta bude automaticky 10x10): ");
       scanf("%d", &cfg->typ_sveta);
+      if (cfg->typ_sveta == 1){
+	cfg->riadky = 10;
+	cfg->stlpce = 10;
+	printf("\n Svet je automaticky zmeneny na velkost 10x10");
+      }
 }
+
 
 void spusti_simulaciu(ConfigMessage cfg) {
     pid_t pid = fork();
@@ -250,7 +263,10 @@ void spusti_simulaciu(ConfigMessage cfg) {
         exit(1);
     } else {
 
-        int fd_out = open(FIFO_C2S, O_WRONLY);
+        int fd_out ;
+	while((fd_out = open(FIFO_C2S, O_WRONLY)) < 0 ){
+		usleep(100000);
+	}
         if (fd_out < 0) {
             perror("Klient open C2S fail");
             return;
@@ -285,42 +301,36 @@ void spusti_simulaciu(ConfigMessage cfg) {
 	data->mutex = &m;
         data->cfg = &cfg; 
 
-        
         if (pthread_create(&vlakno, NULL, prijimaj_vysledky, data) != 0) {
             perror("Nepodarilo sa vytvorit vlakno");
             free(data);
-        } else {
-            
-            pthread_join(vlakno, NULL);
-        }
-
-        
+	}
+        pthread_join(vlakno, NULL);
+        pthread_mutex_destroy(&m);
         free(data);
         close(fd_in);
         close(fd_out); 
         
-        printf("\n[SYSTÉM] Simulácia úspešne dobehla. Vraciame sa do menu.\n");
     }
 }
 
 int main(){
   int volba = 0;
 
-  while (volba != 4){
+  while (volba != 3){
     zobraz_menu();
     if (scanf("%d", &volba) != 1) break;
 
     if (volba ==1){
       ConfigMessage cfg;
-
+	memset(&cfg, 0, sizeof(ConfigMessage));
       nacitaj_konfiguraciu(&cfg);
-      printf("\n\nAk budete pocas simulacie chciet zmenit mod, alebo ukoncit simulaciu stlacte cislo aky mod chcete a enter, a mod sa automaticky zmeni \n0 - interaktivny \n1 - sumarny, kde sa zobrazuje priemerny pocet posunov na dosiahnutie 0,0 \n2 - sumarny, kde sa vykresluje pravdepodobnost, s akou sa odial dostaneme do bodu 0,0   \n3 - koniec\n\n");
       fflush(stdout);
-      sleep(5);
       spusti_simulaciu(cfg);
 
-    } else if (volba == 3) {
+    } else if (volba == 2) {
 	ConfigMessage cfg_obnova;
+	memset(&cfg_obnova, 0, sizeof(ConfigMessage));
 	char subor_cesta[256];
 
     	printf("Zadajte nazov suboru pre nacitanie: ");
