@@ -7,6 +7,8 @@
 
 int main(){
   srand(time(NULL));
+  mkfifo(FIFO_C2S, 0666);
+  mkfifo(FIFO_S2C, 0666);
   ConfigMessage cfg;
   StatusMessage status;
 
@@ -144,6 +146,8 @@ int main(){
 
   close(fd_in);
   close(fd_out);
+  unlink(FIFO_C2S);
+  unlink(FIFO_S2C);
   return 0;
   }
 }
